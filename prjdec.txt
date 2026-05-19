@@ -1,0 +1,312 @@
+DRIVEWISE — Multi-Drive Industrial Simulation & Validation Platform
+The Creative Angle That Separates This From Every Other Submission
+
+Every other team will simulate one motor turning on and off with a speed number changing on a screen.
+
+DRIVEWISE simulates what ABB actually sells and deploys — a coordinated multi-drive system where multiple ACS880 drives work together on a shared mechanical load, with energy optimisation running continuously, predictive maintenance tracking motor health in real time, and the whole system validated automatically against a test suite before a single piece of hardware is touched.
+
+The central innovation: the platform doesn't just simulate drive behaviour — it simulates ABB's own Direct Torque Control algorithm, the patented technology inside every ACS880 drive. When a judge who works on ACS880 firmware sees their own product's control philosophy running in your simulation, the room changes.
+Why Multi-Drive, Not Single Drive
+
+A single motor/drive simulation is a student project. A coordinated multi-drive system is an industrial reality.
+
+The scenario you simulate: a bulk material conveyor system in a mining or port terminal — one of ABB's largest drive deployment verticals. Three drives control three conveyor sections in series. Material loaded onto Section 1 must reach Section 3 without spillage, jamming, or belt slip. The drives must synchronise their speeds precisely. If Section 2 runs 2% faster than Section 1, material piles up at the transfer point. If it runs slower, material backs up and jams.
+
+This coordination problem — called master-follower speed control — is exactly the kind of application ABB's application engineers configure daily. Simulating it correctly demonstrates that you understand not just drive technology, but how drives are deployed together in real industrial systems.
+The Four Physical Models You Simulate
+Model 1: The Drive — Direct Torque Control
+
+ABB's ACS880 uses Direct Torque Control (DTC), patented by ABB, which is fundamentally different from how standard VFDs work.
+
+Standard VFDs control voltage and frequency — they tell the motor what electrical conditions to operate in and let the motor respond. Response time is slow, typically 10–100 milliseconds.
+
+DTC skips the intermediate step. It directly calculates and controls the motor's internal torque and magnetic flux every 25 microseconds. The motor follows torque commands almost instantaneously, with response times under 1 millisecond.
+
+Your simulation models the drive in two distinct control modes:
+
+Scalar control (V/f mode) — the simpler mode, used for basic applications. The drive maintains a fixed ratio between voltage and frequency. Speed accuracy is low (±3–5%). Suitable for fans and pumps where precise speed isn't critical.
+
+DTC mode — the ACS880's signature mode. The drive model continuously estimates the motor's actual torque and flux from the simulated motor current and voltage, compares them to the demanded values, and issues switching commands to correct any deviation. Speed accuracy is ±0.1% of rated speed even under varying load. This mode is what makes the conveyor synchronisation possible.
+
+The drive model also implements the speed ramp generator — not a simple linear ramp, but an S-curve profile with configurable acceleration time, deceleration time, and jerk limit. S-curves prevent mechanical shock on belt joints and gearboxes. An operator can tune all three parameters from the HMI and see the effect on the simulated motor speed profile in real time.
+Model 2: The Motor — Thermal Equivalent Circuit
+
+The motor is modelled as a thermal system with two temperature nodes — the stator winding and the rotor — each with its own thermal mass and heat transfer rate.
+
+Winding temperature rises based on the current squared multiplied by winding resistance (I²R losses). Under heavy load, high current flows, and temperature rises quickly. Under light load, temperature rises slowly. When the motor stops, it cools toward ambient temperature exponentially — fast at first, slower as it approaches ambient.
+
+Rotor temperature rises from core losses — eddy currents and hysteresis in the iron laminations driven by the alternating magnetic field. Rotor temperature lags winding temperature because the heat must conduct from the rotor surface through the air gap.
+
+This dual-node model produces realistic thermal behaviour — the motor doesn't trip on overtemperature immediately when overloaded. It has thermal inertia. The simulation tracks cumulative thermal stress, which is the physical quantity that degrades insulation over time.
+
+Motor insulation degradation is modelled using the Arrhenius equation — the industrial standard for insulation life calculation. Every hour the motor runs above its rated temperature, insulation life is consumed at an accelerating rate. Your simulation tracks total thermal stress accumulated over all operating cycles and calculates remaining insulation life as a percentage. This feeds directly into the predictive maintenance module.
+Model 3: The Mechanical Load — Conveyor Belt Dynamics
+
+The conveyor belt has inertia, friction, and a variable material load. These physical properties directly determine how the drive must respond.
+
+Belt inertia — a loaded conveyor belt is heavy. Accelerating it requires significantly more torque than running it at steady state. The simulation models startup torque demand as a function of belt weight, material load weight, and required acceleration rate. If the drive's torque limit is set too low, the motor cannot accelerate the belt to target speed within the ramp time — a common commissioning mistake that your automated tests specifically catch.
+
+Material load variation — the amount of material on the belt changes over time. An empty belt requires minimal torque. A fully loaded belt requires maximum torque. Your simulation varies the material load according to a configurable profile — cyclic loading from a crusher feed, for example — and tests whether the drive's torque control maintains constant belt speed regardless of load variation.
+
+Belt slip detection — if the motor torque exceeds the friction between drive pulley and belt, the pulley slips. This causes the motor speed to jump while belt speed remains lower. Your simulation models this condition and verifies the PLC detects it and responds.
+Model 4: The Bearing — Vibration and Wear Model
+
+Bearing condition is the most common cause of motor failure in industrial drives. Your simulation models bearing health as a degrading variable.
+
+A healthy bearing produces a baseline vibration signature at specific frequencies related to shaft speed. As a bearing degrades, characteristic defect frequencies appear in the vibration spectrum — at the ball pass frequency of the inner race, outer race, and rolling elements.
+
+Your simulation generates a simplified vibration signal that evolves over simulated operating time. In early life, the signal is clean. As the simulation progresses, defect frequencies grow in amplitude according to a wear curve. The predictive maintenance module analyses this signal and calculates remaining bearing life.
+
+This makes your project directly comparable to ABB's own commercial product — the ABB Ability Smart Sensor — which does exactly this on real motors. Your simulation is effectively a virtual version of that sensor.
+The Control Architecture — Three Levels
+Level 1: Drive Parameter Configuration
+
+This is the drive itself — an ACS880 parameter set. Every ACS880 has over 200 configurable parameters. Your simulation exposes the most important ones:
+
+    Motor nameplate data (rated voltage, current, speed, power, power factor)
+    Control mode selection (Scalar / DTC)
+    Speed reference source (panel, fieldbus, analogue input)
+    Ramp times (acceleration, deceleration, emergency stop)
+    Current limit (maximum torque current)
+    Speed limits (minimum, maximum, forbidden speed zones)
+    Protection thresholds (overcurrent trip level, thermal warning level, stall detection)
+
+Level 2: PLC Application Logic
+
+The PLC sits above the drive and implements the application-level control sequences. It sends speed references and start/stop commands to the drive via fieldbus. Your PLC logic implements:
+
+Start sequence — the PLC checks all permissives before allowing the drive to start. Permissives include: no active faults, safety circuit healthy, mechanical brake released (confirmed by feedback), process interlock clear. Only when all permissives are satisfied does the PLC issue the start command.
+
+Stop sequence — two types. Normal stop: PLC commands the drive to ramp to zero speed on the programmed deceleration curve, applies mechanical brake when speed reaches zero. Emergency stop: PLC commands immediate torque removal, brake applies instantly regardless of speed. The difference between these two sequences is critical — applying the brake at full speed mechanically destroys it.
+
+Multi-drive coordination — the master drive (Section 1) runs at the operator-set speed reference. Section 2 and Section 3 receive their speed references as a ratio of the master speed, with a configurable trim adjustment. The PLC continuously monitors the speed difference between adjacent sections and adjusts the follower trim to maintain the target differential — typically zero difference or a slight increase of 0.5% per section to keep the belt taut.
+
+Fault response logic — when a drive raises a fault, the PLC determines the correct system response based on fault type and location. A thermal warning on Section 2 triggers an alarm but doesn't stop production. An overcurrent fault on Section 1 triggers an emergency stop of all three sections simultaneously — you cannot leave downstream sections running if the upstream section has stopped or material will pile up dangerously.
+Level 3: SCADA Supervisory Layer
+
+Already described in detail from the previous conversation — multi-drive overview, historian, alarm management, shift reports. All connected via OPC-UA.
+The Five Protection Functions
+
+These are the electrical protection features your simulation must implement and your test engine must verify:
+
+Overcurrent protection — motor current exceeds the set trip threshold for longer than the inverse-time delay. The trip time is not fixed — it decreases as current increases (inverse time characteristic). A 150% overcurrent trips in 60 seconds. A 300% overcurrent trips in 5 seconds. An 800% overcurrent trips in under 1 second. This is the standard IEC 60255 thermal inverse curve and your simulation must follow it.
+
+Overvoltage protection — DC bus voltage in the drive exceeds the safe threshold. This happens when a motor decelerates too fast and regenerates energy back into the drive faster than the braking resistor can absorb it. Your simulation monitors DC bus voltage and verifies the drive trips before reaching the capacitor voltage rating.
+
+Undervoltage protection — supply voltage drops below threshold. The drive must not attempt to run a motor on insufficient supply voltage — the motor will draw excessive current trying to maintain torque. Your simulation tests the voltage dip scenario and verifies correct trip behaviour.
+
+Earth fault protection — current flows to ground through a damaged cable or motor winding insulation. Your simulation injects an earth fault condition and verifies the drive detects the residual current imbalance and trips within the required time.
+
+Motor thermal overload — the drive's internal thermal model calculates the motor's temperature based on current history. When the calculated temperature exceeds the thermal threshold, the drive issues a warning, then a trip if the condition persists. This is distinct from a simple overcurrent trip — a motor running at 110% current continuously for an hour is more dangerous thermally than a 200% current spike lasting 2 seconds.
+The Predictive Maintenance Dashboard — The Innovation Judges Remember
+
+This is what makes DRIVEWISE genuinely innovative and directly maps to ABB's commercial strategy.
+
+ABB sells the ABB Ability Smart Sensor — a bolt-on IoT device that monitors motor vibration, temperature, and magnetic field to predict failures before they happen. Your platform simulates the underlying physics and analytics of that product.
+
+The dashboard shows three health indicators per motor, each as a live percentage declining over simulated operating time:
+
+Insulation health — calculated from the cumulative thermal stress model. A new motor starts at 100%. Every operating cycle contributes to insulation degradation based on temperature and time. The dashboard shows current health, rate of degradation, and predicted date of reaching the 20% warning threshold based on current operating patterns.
+
+Bearing health — calculated from the vibration model. Starts at 100% and degrades based on operating hours, load, and speed. The dashboard shows the dominant defect frequency that has appeared in the vibration signature and classifies the bearing condition on the standard ISO 10816 severity scale: Good, Satisfactory, Unsatisfactory, Unacceptable.
+
+Remaining useful life — a combined score integrating insulation and bearing health. Shown as estimated operating hours remaining before maintenance is required. This is the number a maintenance planner needs — not raw sensor data, but an actionable maintenance schedule.
+
+When the automated fault injection engine runs an accelerated life test — running the motor at 120% load for a simulated extended period — the health indicators degrade visibly in real time and the platform generates a maintenance work order recommendation automatically.
+The Automated Test Suite — What Validates the System
+
+Your test engine automatically executes these scenarios without human intervention:
+
+Conveyor start under full load — starts the drive with maximum material load on the belt. Verifies the motor achieves target speed within the programmed ramp time without hitting the current limit. Checks that mechanical brake release timing is correct. Pass criterion: target speed reached within ramp time ±5%, no overcurrent trip, brake fully released before speed exceeds 5% of rated.
+
+Emergency stop from full speed — issues an emergency stop at rated speed with full load. Verifies brake applies within 200ms of stop command, drive removes torque immediately, no overspeed occurs after stop command. Pass criterion: torque zero within 50ms, brake applied within 200ms, speed reaches zero within 10 seconds.
+
+Master-follower synchronisation — with all three sections running, applies a step load change to Section 2 only. Verifies the follower control loop corrects the speed differential within 5 seconds. Pass criterion: speed differential between Section 1 and Section 2 returns to within ±0.2% of target within 5 seconds of disturbance.
+
+Thermal overload trip verification — runs the motor at 150% rated current continuously. Verifies the thermal model accumulates heat correctly and the thermal trip fires at the expected time within ±10%. Pass criterion: trip occurs between 55 and 65 seconds at 150% overcurrent per IEC 60255 curve B.
+
+Power dip ride-through — drops simulated supply voltage to 80% of rated for 200ms. Verifies the drive maintains operation through the dip without tripping. Verifies the drive trips correctly if voltage drops below 70%. This tests the difference between a momentary dip (which should be ridden through) and a genuine undervoltage fault (which should trip).
+
+Fault cascade response — trips Section 1 with an overcurrent fault while all sections are running at full load. Verifies Section 2 and Section 3 also stop within 500ms of the Section 1 trip. Verifies the SCADA alarm console shows the root cause fault (Section 1 overcurrent) flagged as the first-out alarm, not the consequential stops of Sections 2 and 3. This first-out alarm logic is the most commonly misconfigured element in real PLC programs.
+Evaluation Criteria — How DRIVEWISE Scores
+
+Innovation and originality — DTC simulation, predictive maintenance with remaining useful life calculation, automated first-out alarm detection, multi-drive coordination testing. None of these appear in any standard student project.
+
+Technical implementation — dual thermal node motor model, inverse time overcurrent protection curve, S-curve ramp generator, Arrhenius insulation life model, IEC 60255 protection characteristic, ISA-18.2 alarm states, OPC-UA tag bus between SCADA and controller layers.
+
+Industrial relevance — ABB ACS880 DTC is a patented ABB technology. Multi-drive conveyor systems are one of ABB's largest drive market segments globally. ABB Ability Smart Sensor is a live commercial product doing exactly what your predictive maintenance module simulates. Every element of this platform maps directly to something ABB sells or engineers daily.
+
+Scalability and robustness — the platform is drive-agnostic at the physics level. Swap the motor nameplate parameters and the conveyor load profile, and the same platform simulates a pump station, a crane hoist, a paper machine, or a wind turbine pitch drive. The automated test suite runs identically regardless of application. The SCADA layer scales to any number of drive systems by adding nodes.
+
+Technology Stack for the Application
+
+Frontend Shell — Electron Electron lets you build a desktop application using web technologies — React, HTML, CSS — but it packages and runs as a native application on Windows, Mac, or Linux. It has a taskbar icon, a proper application window, can run fullscreen, can access the local file system to save PDF reports, and can be distributed as an installer. This is the right choice because it gives you the full design control of web technologies with the look and feel of a real application.
+
+Simulation Engine — Python The physics model, PLC runtime, alarm manager, fault injector, and historian all run as a Python backend process. Electron launches this process silently when the application starts. They communicate via WebSocket — the Python backend streams live tag values to the frontend every 100 milliseconds.
+
+Real-time Charts — Apache ECharts Not Recharts, not Chart.js. ECharts is specifically built for industrial dashboards and handles high-frequency real-time data updates without performance degradation. It renders in Canvas rather than SVG for this reason. It has a built-in gauge chart type that looks exactly like a real instrument dial.
+
+Historian Database — SQLite A lightweight database file stored locally on the machine. Every tag value written every second. No server required, no installation required, works out of the box. The historian viewer queries this file and renders trends for any time range the operator selects.
+
+PDF Reports — Python ReportLab Generated entirely in the Python backend. When the operator clicks Download Report, Python queries SQLite, assembles the data, generates a formatted PDF with charts and tables, and saves it to the user's documents folder. Electron opens it automatically.
+Design Language — ISA 101 Industrial HMI Standard
+
+ISA 101 is the official standard for industrial HMI design. ABB's own 800xA follows it. Designing your application to ISA 101 principles shows judges you did your homework.
+
+The core principle: colour communicates abnormality, not identity. In a bad HMI, everything is colourful — green pipes, blue tanks, red motors. Operators become desensitised to colour because it's everywhere. In ISA 101, the entire screen is grey when everything is normal. Colour only appears when something is wrong. When an alarm fires and something turns red, the operator's eye goes there immediately because it is the only colour on the screen.
+
+Colour palette:
+
+Background — dark grey #2B2B2B. Not black, not white. The mid-dark grey reduces eye strain for operators working 12-hour shifts.
+
+Panel surfaces — slightly lighter grey #3C3C3C. Creates depth and hierarchy without using colour.
+
+Text — off-white #E0E0E0 for primary, medium grey #A0A0A0 for secondary labels.
+
+Normal process values — white #FFFFFF on dark background.
+
+Running/healthy status — a single subtle green indicator dot only. Not green text, not green backgrounds. One small dot.
+
+Warning state — amber #FFB300. Appears on the specific element that is in warning. Nothing else changes colour.
+
+Alarm state — red #FF3B30. High contrast, impossible to miss.
+
+Trip/fault state — red with white flashing. Reserved for the most critical conditions only.
+
+Setpoint/target values — blue #4A9EFF. Distinguishes what the system is trying to achieve from what it is actually doing.
+
+Typography: One font throughout — a monospace font like Roboto Mono or JetBrains Mono. Industrial displays have always used monospace because it aligns numeric values in columns, making it easy to scan and compare numbers at a glance. A 3500 RPM value and a 3499 RPM value should be visually distinguishable by digit position, not by eye-balling proportional spacing.
+Application Layout Architecture
+
+The application has a permanent shell that never changes, and a content area that switches between views. The shell elements are always visible regardless of which screen is active.
+
+Permanent Top Bar System name on the left — DRIVEWISE. Current logged-in operator name and role. Current date and time with seconds ticking. A network/connection status indicator showing whether the simulation engine is connected. This top bar is 40px tall and never disappears.
+
+Permanent Bottom Alarm Banner The most recent unacknowledged alarm displayed permanently at the bottom of every screen. Alarm priority colour, tag name, description, and time. A count badge showing total number of unacknowledged alarms. Clicking anywhere on the banner navigates to the Alarm Console. This banner is always visible — an operator should never have to navigate away from a working screen to know whether an alarm is active. This is 50px tall.
+
+Left Navigation Sidebar Icon-based navigation, 60px wide, always visible. Icons only — no text labels, maximising the content area. Hovering an icon shows a tooltip with the screen name. Active screen icon is highlighted in blue. The sidebar contains seven navigation icons, one per screen.
+The Seven Screens
+Screen 1 — System Overview
+
+This is the first screen the operator sees when the application opens. It shows all three drive sections simultaneously in a single view.
+
+The layout is a horizontal arrangement of three identical drive unit cards side by side. Each card represents one conveyor section and contains: a stylised motor/drive graphic in the centre (animated — the motor graphic rotates slowly when running, stops when idle), the current speed as a large numeric display, the current load torque as a horizontal bar, the drive status as a coloured indicator pill (RUNNING / STOPPED / FAULT / STARTING), bearing health and insulation health as two small circular progress indicators, and any active alarms for that unit shown as coloured tags below.
+
+Above the three cards sits a simplified conveyor belt graphic — a continuous belt drawn across the top of all three sections with directional arrows showing material flow. A simulated material load (a darker shaded block) moves along the belt in real time, giving the operator an immediate visual sense of whether the conveyor is actually conveying material.
+
+At the top right of this screen sits a single energy panel showing total system power consumption in kW, total energy consumed this shift in kWh, and a power factor value. This is live, updating every second.
+
+A START ALL and STOP ALL button sit at the top left, protected by a confirmation dialog. Individual section start/stop is accessible by clicking into that section's card.
+Screen 2 — Drive Detail View
+
+Accessed by clicking any drive card on the System Overview, or via the sidebar. Shows one drive section in full detail.
+
+The left half of this screen is the motor mimic — a detailed schematic showing the supply incoming, the drive cabinet, the motor, and the mechanical load. Every element is animated. The drive cabinet shows a simulated front panel with a small numeric display showing output frequency, output current, and DC bus voltage — exactly like an ACS880 panel. Current flowing is shown as animated dots moving along the cable lines between components.
+
+The right half is divided into three panels stacked vertically.
+
+The top panel is the speed and torque trend — two overlaid line charts on a shared time axis, the last 5 minutes of data. Speed in white, torque in blue. The current setpoint is shown as a dashed horizontal line. The gap between the setpoint line and the actual speed line is the speed error — visually obvious when it's large.
+
+The middle panel is the drive parameter display — a table of the most important ACS880 parameters currently active: control mode, ramp times, current limit, speed limits, protection thresholds. Clicking any parameter opens an inline editor. Changes take effect immediately in the simulation — this is how the operator tunes the drive during the demo.
+
+The bottom panel is the protection status panel — six rows, one per protection function. Each shows: protection name, current measured value, threshold value, and a horizontal bar showing how close the current value is to the threshold. When the bar reaches 80% of the threshold, it turns amber. At 100% it turns red and the trip fires. This makes protection states visually scannable in under one second.
+Screen 3 — Motor Health Dashboard
+
+This is the predictive maintenance screen and the most visually distinctive screen in the application.
+
+The centre of the screen shows three large circular health gauges — one per motor section. Each gauge is a radial progress indicator going from 0% to 100%, styled like a speedometer. The gauge fills clockwise from the bottom left. Above 60% it is green. Between 30% and 60% it is amber. Below 30% it is red. The number inside the gauge is the combined health score.
+
+Below each gauge are two smaller horizontal bar indicators: insulation health and bearing health separately, with their individual percentages.
+
+To the right of the gauges is the remaining useful life panel — three rows, one per section. Each row shows the estimated hours of operation remaining before maintenance is required, expressed both as a number and as a calendar date. Below the date is a confidence range — the prediction is not a single number but a range, because real predictive maintenance systems acknowledge uncertainty.
+
+The bottom half of the screen is the bearing vibration spectrum. Three charts, one per section, showing the simulated vibration frequency spectrum. A healthy bearing shows a flat spectrum with one dominant peak at shaft frequency. A degraded bearing shows additional peaks appearing at the ball pass frequencies. The specific defect frequency peaks are labelled directly on the chart — BPFO (ball pass frequency outer race), BPFI (ball pass frequency inner race). This is exactly the analysis an ABB Smart Sensor performs and the chart will be immediately recognisable to any ABB engineer who works with motor diagnostics.
+Screen 4 — Alarm Console
+
+The full alarm management view. Two panels side by side.
+
+The left panel is the active alarm list — every alarm currently active, sorted by priority then time. Each row: priority colour chip, timestamp, section name, tag name, alarm description, current value, threshold value, state badge (UNACKED ACTIVE / ACKED ACTIVE / ACKED CLEARED). The operator clicks a row to acknowledge. Multiple selection and bulk acknowledge are supported.
+
+The right panel is the alarm analysis dashboard. Four charts:
+
+A bar chart of alarms by section — which section is generating the most alarms.
+
+A bar chart of alarms by category — which protection function generates the most alarms.
+
+A timeline showing alarm density over the last hour — a histogram where tall bars indicate periods of high alarm activity. ISA 18.2 defines an alarm flood as more than 10 alarms in 10 minutes. Your timeline marks these periods with a red band.
+
+The standing alarms table — alarms that have been active for more than 24 hours without being resolved. These are the most dangerous — operators have become desensitised to them. ABB's alarm management consulting practice specifically targets standing alarms as a safety risk.
+Screen 5 — Historian and Trends
+
+A flexible trend viewer. The operator selects which tags to display, defines a time range, and the historian queries SQLite and renders the data.
+
+The top controls are: a tag selector (searchable list of all available tags, checkbox to add to chart), a time range selector (last 1 hour, 8 hours, 24 hours, or custom date range), and a chart type toggle (line, stepped, scatter).
+
+The main chart area supports up to 6 overlaid trends on a shared time axis with independent Y-axes on left and right. Each trend has its own colour — the operator can customise this. Scrolling horizontally moves through time. Zooming into a period of interest is done by click-dragging a selection box.
+
+At the bottom, a minimap shows the full historical extent as a compressed view with a sliding window indicator showing the current viewport position. This lets the operator navigate quickly to any point in the historical record.
+
+A crosshair cursor appears on hover and snaps to the nearest data point, showing the exact value and timestamp for every visible trend at that time position.
+Screen 6 — Test Execution Console
+
+This is the automated validation screen and one of the most impressive for judges.
+
+The left panel is the test library — a list of all available test cases. Each test case shows its name, the fault type it tests, the expected duration, and its last execution result. Tests can be run individually by clicking the run button next to each one, or all tests can be queued and run sequentially.
+
+The right panel is the live execution view. When a test is running, this panel shows a real-time log of what is happening — timestamped messages like "T+00:05 — Speed setpoint applied: 1500 RPM" and "T+00:12 — Motor reached 1500 RPM. Speed error: +0.08%. PASS" and "T+00:30 — Injecting thermal overload condition" and "T+00:87 — Thermal trip fired. Expected window: 55–65s. Actual: 57s. PASS."
+
+Each assertion is colour-coded as it resolves — green for pass, red for fail, grey for pending. A progress bar at the top of this panel shows overall test suite completion.
+
+At the bottom, a download button becomes active when all tests complete. Clicking it triggers the Python backend to generate the PDF Factory Acceptance Test report and opens it automatically.
+Screen 7 — Configuration Panel
+
+Where the operator configures the simulation scenario before running it. Four sections:
+
+Motor nameplate data — rated power, voltage, current, speed, power factor. Changing these parameters changes the physics model. An operator can simulate a 75kW motor or a 315kW motor by changing four numbers.
+
+Load profile — a configurable curve showing how material load varies over a simulated time period. Drag control points to shape the load profile. This profile drives the torque demand the motor experiences during simulation.
+
+Simulation speed — a multiplier from 1x (real time) to 60x (one simulated minute per real second). For demonstrating long-duration thermal effects, running at 20x lets the judges see insulation degradation happen in minutes rather than hours.
+
+Fault injection schedule — a timeline where the operator pre-programs which faults to inject and when. Drag fault events onto the timeline to schedule them. The simulation then executes these faults automatically during the run without any manual intervention.
+Application Architecture Diagram
+
+┌─────────────────────────────────────────────────────────────┐
+│                    ELECTRON SHELL                           │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │                  React Frontend                       │  │
+│  │                                                       │  │
+│  │  Top Bar | Nav Sidebar | Screen Content | Alarm Bar  │  │
+│  │                                                       │  │
+│  │  7 Screens: Overview | Drive | Health | Alarms |     │  │
+│  │            Historian | Tests | Config                │  │
+│  │                                                       │  │
+│  │  ECharts (real-time charts)                          │  │
+│  │  Apache ECharts for gauges, trends, spectrum         │  │
+│  └───────────────────┬───────────────────────────────────┘  │
+│                      │ WebSocket (100ms tag updates)        │
+│  ┌───────────────────▼───────────────────────────────────┐  │
+│  │           Python Simulation Backend                   │  │
+│  │                                                       │  │
+│  │  ┌─────────────┐  ┌──────────────┐  ┌─────────────┐  │  │
+│  │  │ Physics     │  │  Soft PLC    │  │   Alarm     │  │  │
+│  │  │ Engine      │  │  Runtime     │  │   Manager   │  │  │
+│  │  │ (ODE model) │  │ (scan cycle) │  │ (ISA-18.2)  │  │  │
+│  │  └─────────────┘  └──────────────┘  └─────────────┘  │  │
+│  │                                                       │  │
+│  │  ┌─────────────┐  ┌──────────────┐  ┌─────────────┐  │  │
+│  │  │ Fault       │  │  Historian   │  │   Test      │  │  │
+│  │  │ Injector    │  │  (SQLite)    │  │   Engine    │  │  │
+│  │  └─────────────┘  └──────────────┘  └─────────────┘  │  │
+│  │                                                       │  │
+│  │  ┌─────────────────────────────────────────────────┐  │  │
+│  │  │         OPC-UA Server (tag bus)                 │  │  │
+│  │  │  Exposes all tags for external SCADA connection │  │  │
+│  │  └─────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                      │                                      │
+│                      │ File System Access                   │
+│                      ▼                                      │
+│              PDF Reports / SQLite DB                        │
+└─────────────────────────────────────────────────────────────┘

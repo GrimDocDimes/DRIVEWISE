@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.nix-result
+result
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# LaTeX build artifacts
+submission/*.aux
+submission/*.bbl
+submission/*.bcf
+submission/*.blg
+submission/*.fdb_latexmk
+submission/*.fls
+submission/*.log
+submission/*.out
+submission/*.run.xml
+submission/*.synctex.gz
+submission/*.toc
+submission/tau-temp/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated reports (keep the template, not outputs)
+FAT_Report.pdf

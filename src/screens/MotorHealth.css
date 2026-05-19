@@ -1,0 +1,106 @@
+/* Motor Health Dashboard Styles */
+
+.health-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.health-gauges-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-xl);
+}
+
+.health-gauge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.health-gauge-center {
+  display: flex;
+  justify-content: center;
+  margin: var(--spacing-sm) 0;
+}
+
+.health-sub-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.health-sub-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.health-sub-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* RUL Panel */
+.rul-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.rul-row {
+  display: grid;
+  grid-template-columns: 120px 140px 180px 1fr;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.rul-row:last-child {
+  border-bottom: none;
+}
+
+.rul-section {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rul-hours {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.rul-date {
+  display: flex;
+  flex-direction: column;
+}
+
+.rul-date-value {
+  font-size: var(--font-size-sm);
+  color: var(--text-value);
+  font-weight: 500;
+}
+
+.rul-confidence {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.rul-bar {
+  display: flex;
+  align-items: center;
+}
+
+/* Vibration */
+.vibration-charts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+}

@@ -1,0 +1,17 @@
+/* Historian Styles */
+.historian-screen { display: flex; flex-direction: column; gap: var(--spacing-xl); height: 100%; }
+.historian-layout { display: grid; grid-template-columns: 240px 1fr; gap: var(--spacing-xl); flex: 1; min-height: 0; }
+.historian-sidebar { display: flex; flex-direction: column; overflow: hidden; }
+.historian-search { display: flex; align-items: center; gap: var(--spacing-xs); padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--border-subtle); margin-bottom: var(--spacing-md); color: var(--text-muted); }
+.historian-search-input { flex: 1; background: var(--bg-input); border: 1px solid var(--border-default); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-mono); font-size: var(--font-size-xs); padding: 4px 8px; outline: none; }
+.historian-search-input:focus { border-color: var(--color-accent); }
+.historian-tag-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.historian-group-label { font-size: var(--font-size-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; padding: var(--spacing-sm) 0 var(--spacing-xs); font-weight: 600; }
+.historian-tag-item { display: flex; align-items: center; gap: var(--spacing-sm); padding: 3px var(--spacing-sm); border-radius: var(--radius-sm); cursor: pointer; font-size: var(--font-size-xs); color: var(--text-secondary); transition: background var(--transition-fast); }
+.historian-tag-item:hover { background: var(--bg-hover); }
+.historian-tag-item.selected { color: var(--text-value); }
+.historian-tag-item input[type="checkbox"] { accent-color: var(--color-accent); }
+.historian-tag-name { flex: 1; }
+.historian-tag-color { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.historian-tag-count { font-size: var(--font-size-xs); color: var(--text-muted); padding-top: var(--spacing-md); border-top: 1px solid var(--border-subtle); text-align: center; }
+.historian-chart-area { display: flex; flex-direction: column; min-height: 400px; }

@@ -1,0 +1,206 @@
+/* System Overview Screen Styles */
+
+.overview-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+  height: 100%;
+}
+
+/* Energy Panel */
+.overview-energy-panel {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.energy-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.energy-icon {
+  color: var(--color-warning);
+}
+
+.energy-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-default);
+}
+
+/* Conveyor Belt */
+.conveyor-belt-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  overflow: hidden;
+}
+
+.conveyor-belt-svg {
+  width: 100%;
+  height: 80px;
+}
+
+/* Drive Cards Grid */
+.overview-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-xl);
+  flex: 1;
+  min-height: 0;
+}
+
+/* Individual Drive Card */
+.drive-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.drive-card:hover {
+  border-color: var(--border-active);
+  box-shadow: var(--shadow-glow-blue);
+  transform: translateY(-2px);
+}
+
+.drive-card.fault {
+  border-color: rgba(255, 59, 48, 0.4);
+  box-shadow: var(--shadow-glow-red);
+}
+
+.drive-card.running {
+  border-color: rgba(74, 222, 128, 0.15);
+}
+
+.drive-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drive-card-section {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Motor Graphic */
+.motor-graphic {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-sm) 0;
+}
+
+.motor-svg {
+  width: 80px;
+  height: 80px;
+}
+
+/* Speed Display */
+.drive-card-speed {
+  text-align: center;
+}
+
+.drive-card-speed-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+
+.drive-card-speed .value-number {
+  font-size: var(--font-size-3xl);
+}
+
+.drive-card-setpoint {
+  font-size: var(--font-size-xs);
+  color: var(--color-setpoint);
+  margin-top: 2px;
+  display: block;
+}
+
+/* Metrics */
+.drive-card-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.drive-card-metric .value-label {
+  margin-bottom: 4px;
+}
+
+.drive-card-metric-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.drive-card-metric-value {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-value);
+}
+
+.drive-card-metric-unit {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.drive-card-metric-pct {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+/* Health Rings */
+.drive-card-health {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-2xl);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.drive-card-health-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.health-ring {
+  width: 36px;
+  height: 36px;
+}
+
+.health-ring-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.health-ring-value {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-value);
+  line-height: 1;
+}
+
+.health-ring-name {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
