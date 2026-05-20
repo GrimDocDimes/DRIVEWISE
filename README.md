@@ -289,6 +289,15 @@ DRIVEWISE/
 
 ---
 
+## Author
+
+**Aashaya Gautam**
+BTech ECE, SRM University -- AP
+gautam_aashaya@srmap.edu.in
+[github.com/GrimDocDimes/DRIVEWISE](https://github.com/GrimDocDimes/DRIVEWISE)
+
+---
+
 ## License
 
 This project was developed for the ABB Industrial Hackathon 2026.
