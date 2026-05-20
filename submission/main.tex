@@ -265,6 +265,34 @@ The FAT test engine is the platform's most industrially significant feature. It 
     \tabletext{Tests reference IEC~60255, IEC~61131-3, IEC~60204, IEC~61000, and ISA-18.2 standards.}
 \end{table}
 
+\subsubsection{Test Execution Pipeline}
+
+Each test follows a deterministic 6-stage pipeline ensuring repeatable, auditable results independent of operator intervention:
+
+\begin{figure}[H]
+\centering
+\small
+\begin{tikzpicture}[
+  stage/.style={draw=taucolor,fill=taucolor!8,rounded corners=2pt,minimum height=7mm,minimum width=16mm,
+                font=\scriptsize\sffamily\bfseries,text=taucolor,align=center},
+  arr/.style={->,thick,taucolor}
+]
+  \node[stage] (reset) at (0,0) {Reset\\Simulator};
+  \node[stage] (config) at (2.2,0) {Load Test\\Conditions};
+  \node[stage] (exec) at (4.4,0) {Run\\Physics};
+  \node[stage] (assert) at (6.6,0) {Evaluate\\Assertions};
+  \node[stage,draw=green!60!black,fill=green!5] (log) at (8.8,0) {Log\\Results};
+  \draw[arr] (reset) -- (config);
+  \draw[arr] (config) -- (exec);
+  \draw[arr] (exec) -- (assert);
+  \draw[arr] (assert) -- (log);
+\end{tikzpicture}
+\caption{Automated test execution pipeline — each test progresses through all stages without manual intervention.}
+\label{fig:testpipeline}
+\end{figure}
+
+The reset stage returns all 12 model instances (3~units $\times$ 4~models) to known initial conditions — zero speed, ambient temperature, healthy bearings, no active faults. The condition loader then configures the specific scenario: full material load for TC001, rated speed for TC002, step load disturbance for TC003, sustained overcurrent for TC004, voltage sag profile for TC005, or Section~1 fault injection for TC006. The physics engine advances the simulation at 10\,ms steps for the test duration while the assertion evaluator continuously monitors pass criteria against IEC-referenced thresholds. Every assertion resolves as PASS or FAIL with the exact measured value logged alongside the expected range.
+
 Upon completion, a \textbf{PDF FAT Report} is auto-generated via Python ReportLab — containing a formal cover page, executive summary table with pass/fail counts, per-test assertion tables showing expected vs.\ actual values, timestamped execution logs, and a sign-off page with Engineer/Manager/Customer fields. This matches the documentation format used in real ABB drive commissioning.
 
 \subsection{Evaluation Criteria Mapping}
