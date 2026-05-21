@@ -291,9 +291,6 @@ DRIVEWISE/
 
 ## Author
 
-**Aashaya Gautam**
-BTech ECE, SRM University -- AP
-gautam_aashaya@srmap.edu.in
 [github.com/GrimDocDimes/DRIVEWISE](https://github.com/GrimDocDimes/DRIVEWISE)
 
 ---
