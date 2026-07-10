@@ -16,6 +16,14 @@ from coordinator import SimulationCoordinator
 from test_engine import TestEngine
 from report_gen import generate_fat_report
 
+# Phase 1 — persistence writer (additive, does not affect existing logic)
+try:
+    from persistence.writer import persistence_writer_loop
+    _PERSISTENCE_ENABLED = True
+except ImportError:
+    _PERSISTENCE_ENABLED = False
+    print("[WARN] persistence package not found — DB writes disabled")
+
 # Global state
 coordinator = SimulationCoordinator()
 test_engine = TestEngine(coordinator)
@@ -250,8 +258,17 @@ async def main():
     # Start broadcast loop
     broadcast_task = asyncio.create_task(broadcast_tags())
 
+    # Start persistence writer (1 Hz DB writes, alarm detection, health snapshots)
+    tasks = [server.wait_closed(), broadcast_task]
+    if _PERSISTENCE_ENABLED:
+        writer_task = asyncio.create_task(persistence_writer_loop(coordinator))
+        tasks.append(writer_task)
+        print("[OK] Persistence writer started (SQLite/PostgreSQL)")
+    else:
+        print("[WARN] Running without persistence — install SQLAlchemy to enable")
+
     # Keep running
-    await asyncio.gather(server.wait_closed(), broadcast_task)
+    await asyncio.gather(*tasks)
 
 
 if __name__ == '__main__':

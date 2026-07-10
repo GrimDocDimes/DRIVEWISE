@@ -4,7 +4,7 @@ import { WebSocketProvider, useWebSocket } from './contexts/WebSocketContext';
 import { AlarmProvider, useAlarms } from './contexts/AlarmContext';
 import {
   LayoutDashboard, Gauge, HeartPulse, Bell, TrendingUp,
-  FlaskConical, Settings, ChevronRight
+  FlaskConical, Settings, ChevronRight, Brain
 } from 'lucide-react';
 
 import SystemOverview from './screens/SystemOverview';
@@ -14,6 +14,7 @@ import AlarmConsole from './screens/AlarmConsole';
 import Historian from './screens/Historian';
 import TestConsole from './screens/TestConsole';
 import Configuration from './screens/Configuration';
+import InsightAgent from './screens/InsightAgent';
 
 const NAV_ITEMS = [
   { path: '/', icon: LayoutDashboard, label: 'System Overview' },
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { path: '/historian', icon: TrendingUp, label: 'Historian' },
   { path: '/tests', icon: FlaskConical, label: 'Test Console' },
   { path: '/config', icon: Settings, label: 'Configuration' },
+  { path: '/agent', icon: Brain, label: 'Insight Agent' },
 ];
 
 function AppShell() {
@@ -96,6 +98,7 @@ function AppShell() {
           <Route path="/historian" element={<Historian />} />
           <Route path="/tests" element={<TestConsole />} />
           <Route path="/config" element={<Configuration />} />
+          <Route path="/agent" element={<InsightAgent />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -53,3 +53,9 @@ yarn-error.log*
 
 # Generated reports (keep the template, not outputs)
 FAT_Report.pdf
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
+

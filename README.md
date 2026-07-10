@@ -134,6 +134,9 @@ The platform follows a three-tier industrial architecture that mirrors real-worl
 | Charting        | Apache ECharts                      | Canvas-rendered, industrial-grade trending     |
 | Backend         | Python 3.12 (asyncio)               | Physics simulation engine                      |
 | Numerics        | NumPy                               | ODE integration, FFT spectrum generation       |
+| Database        | PostgreSQL / SQLite + SQLAlchemy    | 1Hz Telemetry historian, alarms & health logs  |
+| LLM Agent       | Anthropic SDK (Claude 3.5 Sonnet)   | Natural-language text-to-SQL query compilation |
+| Agent API       | FastAPI + Uvicorn                   | Lightweight service for query agent (Port 8766)|
 | Communication   | WebSocket (websockets lib)          | 10 Hz bidirectional real-time tag streaming     |
 | Reports         | ReportLab                           | PDF FAT report generation                      |
 | Design System   | ISA-101 dark palette, monospace     | Industrial HMI standard compliance             |
@@ -170,6 +173,7 @@ The platform follows a three-tier industrial architecture that mirrors real-worl
 5. **Historian** -- Multi-tag selector, time-range zoom, 10 Hz live streaming
 6. **Test Console** -- 6 FAT tests, live execution log, PDF report generation
 7. **Configuration** -- Motor nameplate, load profile, simulation speed, fault injection schedule
+8. **GenAI Insight Agent** -- Natural language interface with interactive ECharts visualizations and collapsible compiled SQL inspection panels
 
 ### Predictive Maintenance
 
@@ -286,6 +290,92 @@ DRIVEWISE/
 | ISA-18.2    | Alarm management lifecycle states and flood detection             |
 | ISA-101     | High-performance HMI design -- colour communicates abnormality    |
 | ISO 10816   | Vibration severity classification for rotating machinery          |
+
+---
+
+## SQL Persistence & GenAI Query Agent
+
+DRIVEWISE includes a full SQL telemetry historian and an LLM-powered natural language query agent. This additive layer demonstrates modern data engineering and generative AI integration on top of the real-time simulation backend.
+
+### Relational Database Schema
+
+The persistence layer runs on PostgreSQL (with a transparent SQLite fallback for local development). Data is downsampled to 1 Hz to prevent database bloat while maintaining high-fidelity trends.
+
+```
+                  +-----------------------------------+
+                  |           tag_readings            |
+                  +-----------------------------------+
+                  | id (PK)                           |
+                  | timestamp (INDEX)                 |
+                  | unit_id (INDEX)                   |
+                  | speed_rpm, torque_nm, current_a   |
+                  | power_kw, dc_bus_voltage          |
+                  | stator_temp, rotor_temp           |
+                  | vibration_rms, belt_load_pct      |
+                  | drive_status                      |
+                  +-----------------+-----------------+
+                                    |
+                                    | (1-to-Many on unit_id)
+                                    |
+            +-----------------------+-----------------------+
+            |                                               |
++-----------v-----------+                       +-----------v-----------+
+|        alarms         |                       |   health_snapshots    |
++-----------------------+                       +-----------------------+
+| id (PK)               |                       | id (PK)               |
+| timestamp (INDEX)     |                       | timestamp (INDEX)     |
+| unit_id (INDEX)       |                       | unit_id (INDEX)       |
+| alarm_code (INDEX)    |                       | insulation_health_pct |
+| priority, category    |                       | bearing_health_pct    |
+| description           |                       | rul_hours             |
+| ack_status            |                       | iso10816_severity     |
+| cleared_timestamp     |                       | combined_health_pct   |
++-----------------------+                       +-----------------------+
+
+                  +-----------------------------------+
+                  |           fat_test_runs           |
+                  +-----------------------------------+
+                  | id (PK)                           |
+                  | timestamp (INDEX)                 |
+                  | test_id (INDEX)                   |
+                  | test_name, pass_fail              |
+                  | assertions_json (JSON)            |
+                  | report_pdf_path                   |
+                  +-----------------------------------+
+```
+
+### Why This Matters (Resume Portfolio Context)
+Industrial operational technology (OT) generates vast volumes of high-speed time-series data, which is historically siloed from enterprise analytics. This module bridges that gap by deploying:
+1. **Downsampled Historian Logging**: Decouples high-frequency WebSocket streams (10Hz) from persistent relational logging (1Hz) to balance system performance with database storage efficiency.
+2. **State-Change Downtime Gaps (LAG/LEAD)**: Employs SQL window functions to calculate precise durations of drive faults and downtime, rather than simple aggregates.
+3. **GenAI Text-to-SQL Interface**: Uses Claude 3.5 Sonnet to construct safe, dialect-aware queries with a self-correcting fallback compiler, allowing operators to interrogate physical assets in plain English.
+
+### Example Queries Compiled by the Agent
+
+- **1-Hour Rolling Average (Window Function)**
+  ```sql
+  SELECT timestamp, speed_rpm,
+         AVG(speed_rpm) OVER (ORDER BY timestamp ROWS BETWEEN 3600 PRECEDING AND CURRENT ROW) AS rolling_avg_speed
+  FROM tag_readings
+  WHERE unit_id = 'S1' AND timestamp BETWEEN :start AND :end;
+  ```
+- **Downtime Event Gap Detection**
+  ```sql
+  WITH StatusChanges AS (
+      SELECT timestamp, drive_status,
+             CASE WHEN LAG(drive_status) OVER (ORDER BY timestamp) = drive_status THEN 0 ELSE 1 END AS is_change
+      FROM tag_readings
+      WHERE unit_id = 'S2'
+  ),
+  GroupedStates AS (
+      SELECT timestamp, drive_status, SUM(is_change) OVER (ORDER BY timestamp) AS state_group_id
+      FROM StatusChanges
+  )
+  SELECT drive_status, MIN(timestamp) AS start_ts, MAX(timestamp) AS end_ts,
+         (strftime('%s', MAX(timestamp)) - strftime('%s', MIN(timestamp))) AS duration_seconds
+  FROM GroupedStates WHERE drive_status != 'RUNNING'
+  GROUP BY state_group_id, drive_status;
+  ```
 
 ---
 
