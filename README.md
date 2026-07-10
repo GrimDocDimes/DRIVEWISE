@@ -384,7 +384,3 @@ Industrial operational technology (OT) generates vast volumes of high-speed time
 [github.com/GrimDocDimes/DRIVEWISE](https://github.com/GrimDocDimes/DRIVEWISE)
 
 ---
-
-## License
-
-This project was developed for the ABB Industrial Hackathon 2026.
