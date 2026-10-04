@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: drivewise-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python backend/main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0

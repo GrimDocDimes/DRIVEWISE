@@ -81,6 +81,96 @@ const createDefaultTags = () => {
   return tags;
 };
 
+const getWsUrl = () => {
+  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
+  const isHttps = window.location.protocol === 'https:';
+  const host = window.location.hostname || 'localhost';
+  return isHttps ? `wss://${host}:8765` : `ws://${host}:8765`;
+};
+
+// Fallback in-browser simulator step for offline/static deployment demo mode
+const stepFallbackSimulation = (prevTags) => {
+  const next = { ...prevTags };
+  next.sim_time = (next.sim_time || 0) + 0.1;
+  const sections = ['S1', 'S2', 'S3'];
+  let totalPower = 0;
+
+  sections.forEach((s) => {
+    const statusKey = `${s}_status`;
+    const speedRefKey = `${s}_speed_ref`;
+    const speedActualKey = `${s}_speed_actual`;
+    const torqueKey = `${s}_torque`;
+    const torquePctKey = `${s}_torque_pct`;
+    const currentKey = `${s}_current`;
+    const currentPctKey = `${s}_current_pct`;
+    const voltageKey = `${s}_voltage`;
+    const freqKey = `${s}_frequency`;
+    const dcBusKey = `${s}_dc_bus_voltage`;
+    const powerKey = `${s}_power`;
+    const windingTempKey = `${s}_winding_temp`;
+    const rotorTempKey = `${s}_rotor_temp`;
+    const beltSpeedKey = `${s}_belt_speed`;
+
+    let status = next[statusKey] || 'STOPPED';
+    let targetSpeed = status === 'RUNNING' || status === 'STARTING' ? (next[speedRefKey] || 1475) : 0;
+    let actualSpeed = next[speedActualKey] || 0;
+
+    // Ramp speed
+    if (actualSpeed < targetSpeed) {
+      actualSpeed = Math.min(targetSpeed, actualSpeed + 25);
+      if (status === 'STARTING' && actualSpeed >= targetSpeed) next[statusKey] = 'RUNNING';
+    } else if (actualSpeed > targetSpeed) {
+      actualSpeed = Math.max(targetSpeed, actualSpeed - 35);
+      if (actualSpeed === 0 && status !== 'FAULT') next[statusKey] = 'STOPPED';
+    }
+
+    next[speedActualKey] = actualSpeed;
+    next[`${s}_speed_error`] = (next[speedRefKey] || 0) - actualSpeed;
+
+    const noise = (Math.random() - 0.5) * 1.5;
+    const speedFraction = actualSpeed / 1475.0;
+
+    if (actualSpeed > 0) {
+      const baseTorque = (450 + noise * 10);
+      next[torqueKey] = Math.round(baseTorque * speedFraction * 10) / 10;
+      next[torquePctKey] = Math.round((next[torqueKey] / 485.0) * 1000) / 10;
+      next[currentKey] = Math.round((speedFraction * 120 + 10 + noise) * 10) / 10;
+      next[currentPctKey] = Math.round((next[currentKey] / 135.0) * 1000) / 10;
+      next[voltageKey] = Math.round(speedFraction * 415);
+      next[freqKey] = Math.round(speedFraction * 50 * 10) / 10;
+      next[dcBusKey] = Math.round(586 + noise * 2);
+      const kw = Math.max(0, (next[torqueKey] * actualSpeed / 9549) * 1.1);
+      next[powerKey] = Math.round(kw * 10) / 10;
+      next[beltSpeedKey] = Math.round(speedFraction * 3.5 * 100) / 100;
+      next[windingTempKey] = Math.min(115, Math.round(((next[windingTempKey] || 25) + 0.05) * 10) / 10);
+      next[rotorTempKey] = Math.min(105, Math.round(((next[rotorTempKey] || 25) + 0.04) * 10) / 10);
+      totalPower += next[powerKey];
+    } else {
+      next[torqueKey] = 0;
+      next[torquePctKey] = 0;
+      next[currentKey] = 0;
+      next[currentPctKey] = 0;
+      next[voltageKey] = 0;
+      next[freqKey] = 0;
+      next[dcBusKey] = 586;
+      next[powerKey] = 0;
+      next[beltSpeedKey] = 0;
+      next[windingTempKey] = Math.max(25, Math.round(((next[windingTempKey] || 25) - 0.02) * 10) / 10);
+      next[rotorTempKey] = Math.max(25, Math.round(((next[rotorTempKey] || 25) - 0.02) * 10) / 10);
+    }
+
+    // Health metrics
+    next[`${s}_insulation_health`] = 98.5;
+    next[`${s}_bearing_health`] = 99.1;
+    next[`${s}_combined_health`] = 98.8;
+    next[`${s}_rul_hours`] = 48200;
+  });
+
+  next.total_power_kw = Math.round(totalPower * 10) / 10;
+  next.total_energy_kwh = Math.round(((next.total_energy_kwh || 0) + (totalPower * 0.1 / 3600)) * 1000) / 1000;
+  return next;
+};
+
 export function WebSocketProvider({ children }) {
   const [tags, setTags] = useState(createDefaultTags);
   const [connected, setConnected] = useState(false);
@@ -93,14 +183,15 @@ export function WebSocketProvider({ children }) {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     try {
-      const ws = new WebSocket('ws://localhost:8765');
+      const url = getWsUrl();
+      const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
         setConnected(true);
         setReconnecting(false);
         reconnectAttemptRef.current = 0;
-        console.log('[WS] Connected to simulation backend');
+        console.log('[WS] Connected to simulation backend at', url);
       };
 
       ws.onmessage = (event) => {
@@ -124,8 +215,8 @@ export function WebSocketProvider({ children }) {
         ws.close();
       };
     } catch (e) {
-      console.error('[WS] Connection error:', e);
-      scheduleReconnect();
+        setConnected(false);
+        scheduleReconnect();
     }
   }, []);
 
@@ -138,11 +229,70 @@ export function WebSocketProvider({ children }) {
     }, delay);
   }, [connect]);
 
+  // Fallback simulator loop when WS is offline
+  useEffect(() => {
+    if (connected) return;
+    const interval = setInterval(() => {
+      setTags(prev => stepFallbackSimulation(prev));
+    }, 100);
+    return () => clearInterval(interval);
+  }, [connected]);
+
   const sendCommand = useCallback((type, payload = {}) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type, ...payload }));
     } else {
-      console.warn('[WS] Cannot send command — not connected');
+      // Execute command on local fallback simulator when offline
+      setTags(prev => {
+        const next = { ...prev };
+        const sections = ['S1', 'S2', 'S3'];
+        if (type === 'start_all') {
+          sections.forEach(s => {
+            next[`${s}_status`] = 'RUNNING';
+            next[`${s}_speed_ref`] = 1475;
+          });
+        } else if (type === 'stop_all') {
+          sections.forEach(s => {
+            next[`${s}_status`] = 'STOPPED';
+            next[`${s}_speed_ref`] = 0;
+          });
+        } else if (type === 'estop_all') {
+          sections.forEach(s => {
+            next[`${s}_status`] = 'STOPPED';
+            next[`${s}_speed_ref`] = 0;
+            next[`${s}_speed_actual`] = 0;
+          });
+        } else if (type === 'start_section') {
+          const sec = payload.section || 'S1';
+          next[`${sec}_status`] = 'RUNNING';
+          next[`${sec}_speed_ref`] = 1475;
+        } else if (type === 'stop_section') {
+          const sec = payload.section || 'S1';
+          next[`${sec}_status`] = 'STOPPED';
+          next[`${sec}_speed_ref`] = 0;
+        } else if (type === 'estop_section') {
+          const sec = payload.section || 'S1';
+          next[`${sec}_status`] = 'STOPPED';
+          next[`${sec}_speed_ref`] = 0;
+          next[`${sec}_speed_actual`] = 0;
+        } else if (type === 'set_parameter') {
+          const { section, parameter, value } = payload;
+          if (section && parameter) {
+            next[`${section}_${parameter}`] = value;
+          }
+        } else if (type === 'inject_fault') {
+          const sec = payload.section || 'S1';
+          next[`${sec}_status`] = 'FAULT';
+          next[`${sec}_speed_ref`] = 0;
+          next[`${sec}_speed_actual`] = 0;
+        } else if (type === 'reset_fault') {
+          const sec = payload.section || 'S1';
+          if (next[`${sec}_status`] === 'FAULT') {
+            next[`${sec}_status`] = 'STOPPED';
+          }
+        }
+        return next;
+      });
     }
   }, []);
 

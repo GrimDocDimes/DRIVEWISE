@@ -227,8 +227,8 @@ async def handle_client(websocket):
 
 async def main():
     """Start the DRIVEWISE simulation backend."""
-    host = "0.0.0.0"
-    port = 8765
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", 8765))
 
     print("=" * 60)
     print("  DRIVEWISE — Simulation Backend")
