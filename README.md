@@ -344,40 +344,7 @@ The persistence layer runs on PostgreSQL (with a transparent SQLite fallback for
                   +-----------------------------------+
 ```
 
-### Why This Matters (Resume Portfolio Context)
-Industrial operational technology (OT) generates vast volumes of high-speed time-series data, which is historically siloed from enterprise analytics. This module bridges that gap by deploying:
-1. **Downsampled Historian Logging**: Decouples high-frequency WebSocket streams (10Hz) from persistent relational logging (1Hz) to balance system performance with database storage efficiency.
-2. **State-Change Downtime Gaps (LAG/LEAD)**: Employs SQL window functions to calculate precise durations of drive faults and downtime, rather than simple aggregates.
-3. **GenAI Text-to-SQL Interface**: Uses Claude 3.5 Sonnet to construct safe, dialect-aware queries with a self-correcting fallback compiler, allowing operators to interrogate physical assets in plain English.
 
-### Example Queries Compiled by the Agent
-
-- **1-Hour Rolling Average (Window Function)**
-  ```sql
-  SELECT timestamp, speed_rpm,
-         AVG(speed_rpm) OVER (ORDER BY timestamp ROWS BETWEEN 3600 PRECEDING AND CURRENT ROW) AS rolling_avg_speed
-  FROM tag_readings
-  WHERE unit_id = 'S1' AND timestamp BETWEEN :start AND :end;
-  ```
-- **Downtime Event Gap Detection**
-  ```sql
-  WITH StatusChanges AS (
-      SELECT timestamp, drive_status,
-             CASE WHEN LAG(drive_status) OVER (ORDER BY timestamp) = drive_status THEN 0 ELSE 1 END AS is_change
-      FROM tag_readings
-      WHERE unit_id = 'S2'
-  ),
-  GroupedStates AS (
-      SELECT timestamp, drive_status, SUM(is_change) OVER (ORDER BY timestamp) AS state_group_id
-      FROM StatusChanges
-  )
-  SELECT drive_status, MIN(timestamp) AS start_ts, MAX(timestamp) AS end_ts,
-         (strftime('%s', MAX(timestamp)) - strftime('%s', MIN(timestamp))) AS duration_seconds
-  FROM GroupedStates WHERE drive_status != 'RUNNING'
-  GROUP BY state_group_id, drive_status;
-  ```
-
----
 
 ## Author
 
